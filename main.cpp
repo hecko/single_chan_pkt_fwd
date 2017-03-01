@@ -64,11 +64,9 @@ enum sf_t { SF7=7, SF8, SF9, SF10, SF11, SF12 };
 
 // SX1272 - Raspberry connections
 int ssPin = 6;
-int dio0  = 7;
-int RST   = 0;
-
-// Set spreading factor (SF7 - SF12)
-sf_t sf = SF7;
+int dio0  = 5;
+int RST   = 7;
+sf_t sf = SF10;
 
 // Set center frequency
 uint32_t  freq = 868100000; // in Mhz! (868.1)
@@ -85,8 +83,11 @@ static char description[64] = "";                        /* used for free form d
 
 // define servers
 // TODO: use host names and dns
-#define SERVER1 "54.72.145.119"    // The Things Network: croft.thethings.girovito.nl
+//#define SERVER1 "54.72.145.119"    // The Things Network: croft.thethings.girovito.nl
 //#define SERVER2 "192.168.1.10"      // local
+
+//#define SERVER1 "46.101.155.72"     // lorawan.sk
+#define SERVER1 "139.59.213.253"     // ECN
 #define PORT 1700                   // The port on which to send data
 
 // #############################################
@@ -211,6 +212,7 @@ boolean receivePkt(char *payload)
     writeRegister(REG_IRQ_FLAGS, 0x40);
 
     int irqflags = readRegister(REG_IRQ_FLAGS);
+    printf("REG_IRQ_FLAGS: 0x%x\n", irqflags);
 
     cp_nb_rx_rcv++;
 
@@ -241,9 +243,9 @@ boolean receivePkt(char *payload)
 void SetupLoRa()
 {
     
-    digitalWrite(RST, HIGH);
-    delay(100);
     digitalWrite(RST, LOW);
+    delay(1);
+    digitalWrite(RST, HIGH);
     delay(100);
 
     byte version = readRegister(REG_VERSION);
@@ -278,7 +280,7 @@ void SetupLoRa()
     writeRegister(REG_FRF_MID, (uint8_t)(frf>> 8) );
     writeRegister(REG_FRF_LSB, (uint8_t)(frf>> 0) );
 
-    writeRegister(REG_SYNC_WORD, 0x34); // LoRaWAN public sync word
+    // writeRegister(REG_SYNC_WORD, 0x34); // LoRaWAN public sync word
 
     if (sx1272) {
         if (sf == SF11 || sf == SF12) {
@@ -293,7 +295,14 @@ void SetupLoRa()
         } else {
             writeRegister(REG_MODEM_CONFIG3,0x04);
         }
-        writeRegister(REG_MODEM_CONFIG,0x72);
+        // 125 kHz channel width, 4/5 CR, explicit header
+        //writeRegister(REG_MODEM_CONFIG,0x72);
+        // 31.25 kHz channel width, 4/6 CR, explicit header
+        //writeRegister(REG_MODEM_CONFIG,0x44);
+        // 41.7 kHz channel width, 4/6 CR, explicit header
+        writeRegister(REG_MODEM_CONFIG,0x54);
+
+        // setting spreading factor (SF)
         writeRegister(REG_MODEM_CONFIG2,(sf<<4) | 0x04);
     }
 
@@ -369,7 +378,8 @@ void sendstat() {
     stat_index += j;
     status_report[stat_index] = 0; /* add string terminator, for safety */
 
-    printf("stat update: %s\n", (char *)(status_report+12)); /* DEBUG: display JSON stat */
+    //printf("stat update: %s\n", (char *)(status_report+12)); /* DEBUG: display JSON stat */
+    printf("> stat update sent\n");
 
     //send the update
     sendudp(status_report, stat_index);
@@ -560,7 +570,7 @@ int main () {
     ioctl(s, SIOCGIFHWADDR, &ifr);
 
     /* display result */
-    printf("Gateway ID: %.2x:%.2x:%.2x:ff:ff:%.2x:%.2x:%.2x\n",
+    printf("Gateway ID: %.2x%.2x%.2xffff%.2x%.2x%.2x\n",
            (unsigned char)ifr.ifr_hwaddr.sa_data[0],
            (unsigned char)ifr.ifr_hwaddr.sa_data[1],
            (unsigned char)ifr.ifr_hwaddr.sa_data[2],
