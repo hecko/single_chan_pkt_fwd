@@ -30,6 +30,10 @@ using namespace std;
 #include <wiringPi.h>
 #include <wiringPiSPI.h>
 
+#define RED_LED 3
+#define GRN_LED 2
+#define YEL_LED 0
+
 typedef bool boolean;
 typedef unsigned char byte;
 
@@ -393,6 +397,7 @@ void receivepacket() {
 
     if(digitalRead(dio0) == 1)
     {
+        digitalWrite(YEL_LED, HIGH);
         if(receivePkt(message)) {
             byte value = readRegister(REG_PKT_SNR_VALUE);
             if( value & 0x80 ) // The SNR sign bit is 1
@@ -537,7 +542,7 @@ void receivepacket() {
             fflush(stdout);
 
         } // received a message
-
+        digitalWrite(YEL_LED, LOW);
     } // dio0=1
 }
 
@@ -550,6 +555,17 @@ int main () {
     pinMode(ssPin, OUTPUT);
     pinMode(dio0, INPUT);
     pinMode(RST, OUTPUT);
+
+    // LEDs (board rev3)
+    // G17 => 0
+    // G27 => 2
+    // G22 => 3
+    pinMode(RED_LED, OUTPUT);
+    pinMode(GRN_LED, OUTPUT);
+    pinMode(YEL_LED, OUTPUT);
+    digitalWrite(RED_LED, HIGH);
+    digitalWrite(GRN_LED, HIGH);
+    digitalWrite(YEL_LED, HIGH);
 
     //int fd = 
     wiringPiSPISetup(CHANNEL, 500000);
@@ -580,6 +596,10 @@ int main () {
 
     printf("Listening at SF%i on %.6lf Mhz.\n", sf,(double)freq/1000000);
     printf("------------------\n");
+
+    digitalWrite(RED_LED, HIGH);
+    digitalWrite(GRN_LED, LOW);
+    digitalWrite(YEL_LED, LOW);
 
     while(1) {
 
